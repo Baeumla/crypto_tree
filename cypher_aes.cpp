@@ -38,7 +38,7 @@ std::vector<std::array<uint8_t, BYTE_NUM> > cypher_aes::encrypt(element e, int_1
 
 		state.at(j).at(i % 4) = (uint8_t) (e.description.at(i) >> (24 - 8 * i));
 	}
-	//padding
+	//Add Padding if required
 	j++;
 	if (state.size() % 4 != 0)
 	{
@@ -76,84 +76,111 @@ std::vector<std::array<uint8_t, BYTE_NUM> > cypher_aes::encrypt(element e, int_1
 	initialize_expanded_key();
 
 
-	//Add round key step before start first round
-	add_round_key();
+	j = 0;
+	while (j < state.size())
+	{	
+		//Add round key step before start first round
+		add_round_key();
 
-	for (int i = 1; i < 9; i++)
-	{
+		for (int k = 1; k < 9; k++)
+		{
+			sub_bytes();
+			shift_rows();
+			mix_columns();
+			add_round_key();
+		}
+
+		//Round 10
 		sub_bytes();
 		shift_rows();
-		mix_columns();
 		add_round_key();
+
+		j += 4;
 	}
 
-	//Round 10
-	sub_bytes();
-	shift_rows();
-	add_round_key();
+	
 
 	return state;
 }
 
-
-
 void cypher_aes::add_round_key()
 {
+	int j = 0, k = 0;
+	if ((ark_counter % 44) == 0)
+		k = ((ark_counter / 44) * 4 ) - 1;
+
+
 	for (int i = 0; i < 16; i++) 
 	{
-		if ((i % 4 == 0) && (i != 0))
-			ark_counter++;
+		if ((i % 4 == 0) && (i != 0)){
+			k++;
+			j++;
+		}
 
-		state[ark_counter][i % 4] ^= expanded_key[ark_counter][i % 4];
+		state.at(k).at(i % 4) ^= expanded_key[ark_counter + j][i % 4];
 	}
-	ark_counter++;
+	ark_counter += 4;
 }
 
 void cypher_aes::sub_bytes()
 {
-	int j = 0;
+	int j = 0, k = 0;
+	if (((ark_counter - 4) % 44) == 0)
+		k = (((ark_counter - 4) / 44) * 4 ) - 1;
+
 	for (int i = 0; i < 16; i++) 
 	{
 		if ((i % 4 == 0) && (i != 0))
+		{
+			k++;
 			j++;
+		}
 
-		state[j][i % 4] = rcon[state[j][i % 4]];
+		state.at(k).at(i % 4) = rcon[state.at(k).at(i % 4)];
 	}
 }
 
 void cypher_aes::shift_rows()
 {
+	int k = 0;
+	if (((ark_counter - 4) % 44) == 0)
+		k = (((ark_counter - 4) / 44) * 4 ) - 1;
+
 	//second row shift;
-	uint8_t fubr = state[1][0];
-	state[1][0] = state[1][1];
-	state[1][1] = state[1][2];
-	state[1][2] = state[1][3];
-	state[1][3] = fubr;
+	uint8_t fubr = state[k + 1][0];
+	state[k + 1][0] = state[k + 1][1];
+	state[k + 1][1] = state[k + 1][2];
+	state[k + 1][2] = state[k + 1][3];
+	state[k + 1][3] = fubr;
 
 	//third row shift
-	fubr = state[2][0];
-	state[2][0] = state[2][2];
-	state[2][2] = fubr;
-	fubr = state[2][1];
-	state[2][1] = state[2][3];
-	state[2][3] = fubr;
+	fubr = state[k + 2][0];
+	state[k + 2][0] = state[k + 2][2];
+	state[k + 2][2] = fubr;
+	fubr = state[k + 2][1];
+	state[k + 2][1] = state[k + 2][3];
+	state[k + 2][3] = fubr;
 
 	//fourth row shift
-	fubr = state[3][0];
-	state[3][0] = state[3][2];
-	state[3][2] = fubr;
+	fubr = state[k + 3][0];
+	state[k + 3][0] = state[k + 3][2];
+	state[k + 3][2] = fubr;
 }
 
-void cypher_aes::mix_columns() { 
-   uint8_t ss[BYTE_NUM][BYTE_NUM];
+void cypher_aes::mix_columns() 
+{ 
+   	uint8_t ss[BYTE_NUM][BYTE_NUM];
+   	int k = 0;
+	if (((ark_counter - 4) % 44) == 0)
+		k = (((ark_counter - 4) / 44) * 4 ) - 1;
 
-   for (int c = 0; c < 4; c++) 
-   {
-      ss[0][c] = (uint8_t) (gal_field_mul(0x02, state[0][c]) ^ gal_field_mul(0x03, state[1][c]) ^ state[2][c] ^ state[3][c]);
-      ss[1][c] = (uint8_t) (state[0][c] ^ gal_field_mul(0x02, state[1][c]) ^ gal_field_mul(0x03, state[2][c]) ^ state[3][c]);
-      ss[2][c] = (uint8_t) (state[0][c] ^ state[1][c] ^ gal_field_mul(0x02, state[2][c]) ^ gal_field_mul(0x03, state[3][c]));
-      ss[3][c] = (uint8_t) (gal_field_mul(0x03, state[0][c]) ^ state[1][c] ^ state[2][c] ^ gal_field_mul(0x02, state[3][c]));
-   }
+	for (int c = 0; c < 4; c++) 
+	{
+		ss[0][c] = (uint8_t) (gal_field_mul(0x02, state.at(k).at(c)) ^ gal_field_mul(0x03, state.at(k + 1).at(c)) ^ state.at(k + 2).at(c) ^ state.at(k + 3).at(c));
+		ss[1][c] = (uint8_t) (state.at(k).at(c) ^ gal_field_mul(0x02, state.at(k + 1).at(c)) ^ gal_field_mul(0x03, state.at(k + 2).at(c)) ^ state.at(k + 3).at(c));
+		ss[2][c] = (uint8_t) (state.at(k).at(c) ^ state.at(k + 1).at(c) ^ gal_field_mul(0x02, state.at(k + 2).at(c)) ^ gal_field_mul(0x03, state.at(k + 3).at(c)));
+		ss[3][c] = (uint8_t) (gal_field_mul(0x03, state.at(k).at(c)) ^ state.at(k + 1).at(c) ^ state.at(k + 2).at(c) ^ gal_field_mul(0x02, state.at(k + 3).at(c)));
+	}
 
    //Deep array copy
    int j = 0;
@@ -162,7 +189,7 @@ void cypher_aes::mix_columns() {
    		if ((i % 4 == 0) && (i != 0))
 			j++;
 
-   		state[j][i % 4]  = ss[j][i % 4]; 
+   		state[k + j][i % 4]  = ss[j][i % 4]; 
    }
 }
 
@@ -294,44 +321,3 @@ int cypher_aes::key_schedule_core(int input, int i)
 
 	return result;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -59,7 +59,7 @@ private:
 
 public:
 	cypher_aes();
-	std::vector<std::array<uint8_t, BYTE_NUM> >  encrypt(element e, int_128 key);
+	std::vector<std::array<uint8_t, BYTE_NUM> > * encrypt(element e, int_128 key);
 	uint8_t * decrypt(char * input, int length, int_128 key);
 
 };

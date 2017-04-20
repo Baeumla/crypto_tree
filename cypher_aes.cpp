@@ -14,7 +14,7 @@ cypher_aes::cypher_aes()
 	ark_counter = 0;
 }
 
-std::vector<std::array<uint8_t, BYTE_NUM> > cypher_aes::encrypt(element e, int_128 key)
+std::vector<std::array<uint8_t, BYTE_NUM> > * cypher_aes::encrypt(element e, int_128 key)
 {
 	//Bring input element in state; padding if required
 	state.push_back((std::array<uint8_t, 4>) {0,0,0,0});
@@ -98,9 +98,7 @@ std::vector<std::array<uint8_t, BYTE_NUM> > cypher_aes::encrypt(element e, int_1
 		j += 4;
 	}
 
-	
-
-	return state;
+	return &state;
 }
 
 void cypher_aes::add_round_key()

@@ -9,12 +9,18 @@
 #include <array>
 #include <cstdlib>
 
+/**
+*	public: Default constructor
+*/
 node::node()
 {
 	left_node = nullptr;
 	right_node = nullptr;
 }
 
+/**
+*	public: Custom constructor
+*/
 node::node(element e, std::string password)
 {
 	cypher_aes aes;
@@ -41,6 +47,12 @@ node::node(element e, std::string password)
 	is_root = true;
 }	
 
+/**
+*	public: returns element if password provided correctly
+*	_______
+*	To do: 
+*		- Decryption implementation
+*/
 element * node::get_element(std::string password)
 {
 	std::string password_reverse;
@@ -56,22 +68,45 @@ element * node::get_element(std::string password)
 	return nullptr;
 }
 
-
+/**
+*	public: Adds node to tree
+*/
 node * node::add_node(element e)
 {
 	cypher_aes aes;
 	std::vector<std::array<uint8_t, 4> > * ex = aes.encrypt(e, pwd);
-	if (ex->at(0).at(0) > encrypted.at(0).at(0))
+
+	//Randomized tree implementation
+	//Complexity O(n) if probability is 1/(n+1)
+	int n = this->get_count_right() + this->get_count_left();
+	int randNum = rand() % (n + 1);
+	
+	if (randNum == (int) (n / 2))
 	{
-		return right_node->insert_node(ex);
+		//Insert node as root
+		return insert_root(ex);
 	} 
-	else if (ex->at(0).at(0) < encrypted.at(0).at(0))
+	else
 	{
-		return left_node->insert_node(ex);
+		//Insert node as leaf
+		if (ex->at(0).at(0) > encrypted.at(0).at(0))
+		{
+			return right_node->insert_node(ex);
+		} 
+		else if (ex->at(0).at(0) < encrypted.at(0).at(0))
+		{
+			return left_node->insert_node(ex);
+		}
+		return this;
 	}
-	return this;
+
+	
 }
 
+
+/**
+*	private: Inserts node as leaf and rotates until it is root
+*/
 node * node::insert_root(std::vector<std::array<uint8_t, 4> > * ex)
 {
 	node * new_root = insert_node(ex);
@@ -104,6 +139,9 @@ node * node::insert_root(std::vector<std::array<uint8_t, 4> > * ex)
 
 }
 
+/**
+*	private: Rotates tree around root x to the left
+*/
 node * node::rotate_left(node * x)
 {
 	node * y = x->get_right_node();
@@ -112,6 +150,9 @@ node * node::rotate_left(node * x)
 	return y;
 }
 
+/**
+*	private: Rotates tree around root x to the right
+*/
 node * node::rotate_right(node * x)
 {
 	node * y = x->get_left_node();
@@ -120,26 +161,41 @@ node * node::rotate_right(node * x)
 	return y;
 }
 
+/**
+*	private: Set left node
+*/
 void node::set_left_node(node * x)
 {
 	left_node = x;
 }
 
+/**
+*	private: Set right node
+*/
 void node::set_right_node(node * x)
 {
 	right_node = x;
 }
 
+/**
+*	private: Returns left node
+*/
 node * node::get_left_node()
 {
 	return right_node;
 }
 
+/**
+*	private: Returns right node
+*/
 node * node::get_right_node()
 {
 	return left_node;
 }
 
+/**
+*	private: Inserts node as leaf
+*/
 node * node::insert_node(std::vector<std::array<uint8_t, 4> > * ex)
 {
 	if (encrypted.empty())
@@ -165,6 +221,9 @@ node * node::insert_node(std::vector<std::array<uint8_t, 4> > * ex)
 	return this;
 }
 
+/**
+*	private: Returns number of the elements to the right + root
+*/
 int node::get_count_right()
 {
 	if (right_node != nullptr)
@@ -179,6 +238,9 @@ int node::get_count_right()
 	return +1;
 }
 
+/**
+*	private: Returns number of the elements to the left + root
+*/
 int node::get_count_left()
 {
 	if (right_node != nullptr)
